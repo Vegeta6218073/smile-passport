@@ -1,0 +1,20 @@
+# Minimal config so `supabase start` works in CI and locally.
+# Run `supabase init` only if you want the full commented template.
+project_id = "smile-passport"
+
+[auth]
+minimum_password_length = 12
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+# Invite and reset emails go through /auth/confirm. On a hosted project, paste the same
+# templates into Authentication > Email Templates (see docs/automation.md).
+[auth.email.template.invite]
+subject = "You have been invited to the clinic system"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./supabase/templates/recovery.html"

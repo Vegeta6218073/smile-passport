@@ -1,0 +1,9 @@
+{
+  "name": "Smile Passport",
+  "short_name": "Smile Passport",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#f7f9fb",
+  "theme_color": "#0f766e",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
