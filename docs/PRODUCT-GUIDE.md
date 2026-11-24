@@ -21,6 +21,13 @@ One system for a dental or orthodontic clinic. It handles the front-desk basics 
 | Funnel numbers | ✓ | | ✓ | |
 | WhatsApp templates and referral partners | ✓ | | ✓ | |
 | Clinic settings, team invitations | ✓ | | | |
+| Patient concerns and check-ins (read and resolve) | ✓ | ✓ | ✓ | raise only |
+| Notes, tooth chart, linking emergency visits, moving the schedule | ✓ | ✓ | read only | |
+| Payments, receipts, invoices | ✓ | read only | ✓ | |
+| Treatment plans and estimates | ✓ | ✓ | ✓ | |
+| Dashboard | ✓ | ✓ (no money if the role cannot see it) | ✓ | |
+| Import, merge duplicates | ✓ | | ✓ | |
+| Recalls and waitlist | ✓ | ✓ | ✓ | ✓ |
 
 The screens hide what a role cannot use, and the database refuses it anyway.
 
@@ -40,6 +47,20 @@ The screens hide what a role cannot use, and the database refuses it anyway.
 
 **Smile Passport** (`/smile` public, `/scans` and `/funnel` for staff): see `smile-passport.md`.
 
+**Concerns** (`/concerns`): patient problems from check-in replies, WhatsApp messages or phone calls, urgent first, each with a clinician. Resolve with what was done.
+
+**Recalls** (`/recalls`) and **Waitlist** (`/waitlist`): patients who missed a visit or drifted away, and patients who want an earlier slot. Cancelled slots are offered to the waitlist automatically.
+
+**Labs** (`/labs`): lab orders, which ones are late, and which treatment they hold up.
+
+**Dashboard** (`/dashboard`): leads, visits, treatments and money against the previous period; the pilot success criteria; AI draft rates; patients at risk; sources and ad spend (`/dashboard/sources`); and a plain-language weekly summary (`/dashboard/weekly`).
+
+**On each patient**, besides details and the treatment journey: plans and estimates, the clinical record (notes, tooth chart, lab orders), documents and photos, feedback, family links, check-ins and concerns, emergency visits, and payments.
+
+**Notifications** (top bar): tasks given to you and concerns assigned to you, also as phone notifications if you turn them on.
+
+**AI**: drafts replies to enquiries and plan explainers, sorts WhatsApp replies by urgency, and writes the weekly summary. It never sends anything; a person approves every message, and urgent or unclear replies always reach a clinician. It runs inside S-One and can be switched off per clinic or per feature in Settings.
+
 **Settings** (`/settings`): owner and coordinator only. Clinic details (home cities, booking link, review fee, reply target), WhatsApp message templates, and the team (invite, change role, remove access).
 
 **Security** (`/security`): each person can set up two-step login. The owner can require it for everyone with a setting.
@@ -52,7 +73,9 @@ A background worker (see `automation.md`) runs about once a minute:
 2. **Sending.** Queued messages go out through your WhatsApp provider. Failed ones retry with a growing delay, up to five attempts. Opt-in is checked again right before each send.
 3. **Smile scan deadline alerts.** When a scan is within four hours of its 24-hour review deadline, the reviewing doctor gets a task.
 
-When a patient replies, the webhook records it. A reply of STOP removes their WhatsApp permission immediately and cancels anything waiting to send. Any other reply from a known patient becomes a task for the coordinator.
+4. **Comfort check-ins** a couple of days after each visit, **recalls** for missed visits and lapsed patients, **instalment reminders**, **feedback requests** after key visits, and **push notifications** to staff phones.
+
+When a patient replies, the webhook records it. A reply of STOP removes their WhatsApp permission immediately and cancels anything waiting to send. A rating (1 to 5) answers a feedback request; YES or NO answers a slot offer; a check-in reply is sorted by urgency and anything not clearly fine becomes a concern for a clinician. Any other reply becomes a task for the coordinator. Photos are kept only if the patient gave photo consent.
 
 ## Rules the system enforces
 

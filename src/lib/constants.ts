@@ -29,3 +29,7 @@ export const LANGUAGES = [
   ['hi', 'Hindi'],
   ['or', 'Odia'],
 ] as const;
+
+export const RECALL_REASONS = [
+  'Cost', 'Moved away', 'Too busy', 'Switched clinic', 'Unhappy with treatment', 'Could not reach', 'Other',
+];

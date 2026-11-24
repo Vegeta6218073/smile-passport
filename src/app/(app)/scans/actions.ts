@@ -55,6 +55,20 @@ export const markConsultBooked = async (fd: FormData) =>
 export const markTreatmentStarted = async (fd: FormData) =>
   scanAction(fd, 'mark_treatment_started', () => ({}), 'Treatment recorded.');
 
+// Week 4 questions. '' means not asked or no answer.
+const yesNo = (fd: FormData, k: string) => {
+  const v = fd.get(k);
+  return v === 'yes' ? true : v === 'no' ? false : null;
+};
+
+export const recordFeedback = async (fd: FormData) =>
+  scanAction(fd, 'record_scan_feedback', (f) => ({
+    p_upload_easy: yesNo(f, 'upload_easy'),
+    p_report_clear: yesNo(f, 'report_clear'),
+    p_would_recommend: yesNo(f, 'would_recommend'),
+    p_confusion: text(f, 'confusion').slice(0, 1000),
+  }), 'Feedback saved.');
+
 export const setPayment = async (fd: FormData) =>
   scanAction(fd, 'set_scan_payment', (f) => ({ p_status: text(f, 'status') }), 'Payment updated.');
 

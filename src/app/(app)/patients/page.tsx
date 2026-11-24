@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { requireMember } from '@/lib/auth';
+import { can } from '@/lib/roles';
 import { safeSearch } from '@/lib/validation';
 import { LANGUAGES, LEAD_SOURCES } from '@/lib/constants';
 import { createPatient } from './actions';
@@ -12,7 +13,7 @@ export default async function PatientsPage({
 }: {
   searchParams: { q?: string; error?: string; ok?: string };
 }) {
-  await requireMember();
+  const member = await requireMember();
   const supabase = createClient();
   const q = safeSearch(searchParams.q ?? '');
 
@@ -37,6 +38,12 @@ export default async function PatientsPage({
           <input id="q" name="q" defaultValue={q} />
           <button type="submit">Search</button>
         </form>
+        {can(member.role, 'patient:import') && (
+          <p className="muted">
+            <Link href="/patients/import">Import a patient list</Link>
+            {' · '}<Link href="/patients/duplicates">Find duplicates</Link>
+          </p>
+        )}
         {error && <p className="error">Could not load patients.</p>}
         <ul className="list">
           {patients?.map((p) => (

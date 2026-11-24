@@ -130,6 +130,32 @@ select results_eq(
   $$values (2::bigint, 2::bigint, 1::bigint, 1::bigint, 1::bigint)$$,
   'funnel counts visits, scans, reviews, consultations and treatments');
 
+-- ===== MVP plan additions: feedback, review speed, sources =====
+select throws_ok($$select record_scan_feedback('a3000000-0000-0000-0000-000000000002', true, null, null, null)$$,
+  'P0001', 'send the report before recording feedback', 'no feedback before the report is sent');
+select throws_ok($$select record_scan_feedback('a3000000-0000-0000-0000-000000000001', null, null, null, '  ')$$,
+  'P0001', 'record at least one answer', 'empty feedback is refused');
+select lives_ok($$select record_scan_feedback('a3000000-0000-0000-0000-000000000001', true, false, true, 'What is a midline?')$$,
+  'feedback recorded after the report was sent');
+select results_eq(
+  $$select reviews_on_time, feedback_count, would_recommend from smile_funnel(current_date - 1, current_date + 1)$$,
+  $$values (1::bigint, 1::bigint, 1::bigint)$$,
+  'funnel counts on-time reports and feedback');
+select ok((select avg_hours_to_report from smile_funnel(current_date - 1, current_date + 1)) >= 0,
+  'funnel gives the average time to report');
+select results_eq(
+  $$select source, scans from smile_funnel_sources(current_date - 1, current_date + 1)$$,
+  $$values ('(direct)'::text, 2::bigint)$$,
+  'scans without a source are grouped as direct');
+
+-- Front desk cannot record feedback (cannot see the scan)
+reset role;
+select set_config('request.jwt.claims',
+  '{"sub":"a1000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+set local role authenticated;
+select throws_ok($$select record_scan_feedback('a3000000-0000-0000-0000-000000000001', true, true, true, null)$$,
+  'P0001', 'send the report before recording feedback', 'front desk cannot record feedback');
+
 reset role;
 select * from finish();
 rollback;

@@ -53,4 +53,15 @@ describe('roles', () => {
     expect(can('coordinator', 'template:write')).toBe(true);
     expect(navFor('doctor').some((i) => i.href === '/settings')).toBe(false);
   });
+
+  it('keeps money and clinical decisions with the right roles', () => {
+    expect(can('front_desk', 'finance:view')).toBe(false);
+    expect(can('doctor', 'finance:write')).toBe(false);
+    expect(can('coordinator', 'finance:write')).toBe(true);
+    expect(can('coordinator', 'clinical:write')).toBe(false);
+    expect(can('front_desk', 'concern:view')).toBe(false);
+    expect(can('front_desk', 'patient:import')).toBe(false);
+    expect(navFor('front_desk').some((i) => i.href === '/dashboard')).toBe(false);
+    expect(navFor('front_desk').some((i) => i.href === '/recalls')).toBe(true);
+  });
 });

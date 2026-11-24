@@ -16,7 +16,16 @@ export type Permission =
   | 'scan:view'
   | 'scan:report'
   | 'funnel:view'
-  | 'settings:manage';
+  | 'settings:manage'
+  | 'patient:import'
+  | 'patient:merge'
+  | 'dashboard:view'
+  | 'concern:view'
+  | 'clinical:write'
+  | 'finance:view'
+  | 'finance:write'
+  | 'lab:write'
+  | 'usage:view';
 
 const MATRIX: Record<Permission, Role[]> = {
   'patient:write': ALL_ROLES,
@@ -31,6 +40,15 @@ const MATRIX: Record<Permission, Role[]> = {
   'scan:report': ['owner', 'doctor'],
   'funnel:view': ['owner', 'coordinator'],
   'settings:manage': ['owner'],
+  'patient:import': ['owner', 'coordinator'],
+  'patient:merge': ['owner', 'coordinator'],
+  'dashboard:view': ['owner', 'doctor', 'coordinator'],
+  'concern:view': ['owner', 'doctor', 'coordinator'],
+  'clinical:write': ['owner', 'doctor'],
+  'finance:view': ['owner', 'doctor', 'coordinator'],
+  'finance:write': ['owner', 'coordinator'],
+  'lab:write': ['owner', 'doctor', 'coordinator'],
+  'usage:view': ['owner'],
 };
 
 export function can(role: Role, permission: Permission): boolean {
@@ -43,13 +61,20 @@ export function medicalWritable(role: Role): boolean {
 
 export type NavItem = { href: string; label: string; roles: Role[] };
 
+const CLINICAL: Role[] = ['owner', 'doctor', 'coordinator'];
+
 export const NAV: NavItem[] = [
   { href: '/today', label: 'Today', roles: ALL_ROLES },
   { href: '/patients', label: 'Patients', roles: ALL_ROLES },
   { href: '/appointments', label: 'Appointments', roles: ALL_ROLES },
-  { href: '/scans', label: 'Smile scans', roles: ['owner', 'doctor', 'coordinator'] },
-  { href: '/funnel', label: 'Funnel', roles: ['owner', 'coordinator'] },
   { href: '/enquiries', label: 'Enquiries', roles: ALL_ROLES },
+  { href: '/concerns', label: 'Concerns', roles: CLINICAL },
+  { href: '/recalls', label: 'Recalls', roles: ALL_ROLES },
+  { href: '/waitlist', label: 'Waitlist', roles: ALL_ROLES },
+  { href: '/labs', label: 'Labs', roles: CLINICAL },
+  { href: '/scans', label: 'Smile scans', roles: CLINICAL },
+  { href: '/dashboard', label: 'Dashboard', roles: CLINICAL },
+  { href: '/funnel', label: 'Funnel', roles: ['owner', 'coordinator'] },
   { href: '/tasks', label: 'Tasks', roles: ALL_ROLES },
   { href: '/sops', label: 'SOPs', roles: ALL_ROLES },
   { href: '/settings', label: 'Settings', roles: ['owner', 'coordinator'] },

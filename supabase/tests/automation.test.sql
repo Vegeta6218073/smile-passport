@@ -52,18 +52,18 @@ select is((select status from outbound_messages where patient_id = 'b3000000-000
   'is final after 5 attempts');
 
 -- ===== Inbound =====
-select is(record_inbound_message('b2000000-0000-0000-0000-000000000001', '+91 94000-00001', 'Can I come later?', 'wamid.in1'),
+select is((select result from record_inbound_message('b2000000-0000-0000-0000-000000000001', '+91 94000-00001', 'Can I come later?', 'wamid.in1')),
   'reply', 'a reply from a known patient is logged');
 select is((select count(*) from tasks where title like 'Reply to Pat Opted%'), 1::bigint, 'and becomes a task');
-select is(record_inbound_message('b2000000-0000-0000-0000-000000000001', '+91 94000-00001', 'Can I come later?', 'wamid.in1'),
+select is((select result from record_inbound_message('b2000000-0000-0000-0000-000000000001', '+91 94000-00001', 'Can I come later?', 'wamid.in1')),
   'duplicate', 'a replayed webhook is ignored');
 select is((select count(*) from inbound_messages where provider_message_id = 'wamid.in1'), 1::bigint, 'logged once');
-select is(record_inbound_message('b2000000-0000-0000-0000-000000000001', '9400000001', ' stop ', 'wamid.in2'),
+select is((select result from record_inbound_message('b2000000-0000-0000-0000-000000000001', '9400000001', ' stop ', 'wamid.in2')),
   'stop', 'STOP is recognised in any case');
 select is((select whatsapp_opt_in from patients where id = 'b3000000-0000-0000-0000-000000000001'), false,
   'STOP opts the patient out');
-select is(record_inbound_message('b2000000-0000-0000-0000-000000000001', '9999999999', 'hello', 'wamid.in3'),
-  'reply', 'an unknown number is logged without a patient');
+select is((select result from record_inbound_message('b2000000-0000-0000-0000-000000000001', '9999999999', 'hello', 'wamid.in3')),
+  'unknown_sender', 'an unknown number is logged without a patient');
 select is((select count(*) from inbound_messages where provider_message_id = 'wamid.in3' and patient_id is null), 1::bigint,
   'with no patient attached');
 

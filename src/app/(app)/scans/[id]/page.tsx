@@ -7,7 +7,7 @@ import { PHOTO_LABELS, STATUS_LABEL, waLink, type PhotoKind } from '@/lib/scan';
 import { dateIn } from '@/lib/dates';
 import {
   assignPartner, claimScan, convertToPatient, markConsultBooked, markReportSent,
-  markTreatmentStarted, requestBetterPhotos, saveReport, setPayment,
+  markTreatmentStarted, recordFeedback, requestBetterPhotos, saveReport, setPayment,
 } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +45,12 @@ export default async function ScanPage({
   const partner = partners?.find((p) => p.id === scan.referral_partner_id);
   const reportText = `Hi ${scan.full_name.split(' ')[0]}, your Smile Report from ${clinic?.name ?? 'our clinic'} is ready.`;
   const editing = canReport && ['in_review', 'report_ready'].includes(scan.status);
+  const answer = (v: boolean | null) => (v === true ? 'yes' : v === false ? 'no' : '');
+  const feedbackQuestions = [
+    ['upload_easy', 'Was uploading easy?', scan.feedback_upload_easy],
+    ['report_clear', 'Did the report make sense?', scan.feedback_report_clear],
+    ['would_recommend', 'Would you recommend this to a friend?', scan.feedback_would_recommend],
+  ] as const;
 
   return (
     <>
@@ -177,6 +183,33 @@ export default async function ScanPage({
           </button>
         </form>
       </div>
+
+      {scan.report_sent_at && (
+        <div className="card">
+          <h2>Feedback</h2>
+          <p className="muted">
+            Ask these when you follow up, and note anything that confused them. The answers show on the
+            Funnel page so you can fix friction before spending on marketing.
+          </p>
+          <form action={recordFeedback}>
+            <input type="hidden" name="scan_id" value={scan.id} />
+            {feedbackQuestions.map(([name, question, value]) => (
+              <div key={name}>
+                <label htmlFor={name}>{question}</label>
+                <select id={name} name={name} defaultValue={answer(value)}>
+                  <option value="">Not asked</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            ))}
+            <label htmlFor="confusion">What confused them?</label>
+            <textarea id="confusion" name="confusion" rows={3} maxLength={1000} defaultValue={scan.feedback_confusion ?? ''} />
+            <button type="submit">Save feedback</button>
+          </form>
+          {scan.feedback_at && <p className="muted">Last saved {dateIn(scan.feedback_at, tz)}.</p>}
+        </div>
+      )}
     </>
   );
 }

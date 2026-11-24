@@ -34,8 +34,10 @@ export async function completeTask(formData: FormData) {
   const outcome = String(formData.get('outcome') ?? '');
   if (!id.success) go('/tasks', 'error', 'Invalid request.');
 
-  const { error } = await createClient().rpc('complete_task', { p_task: id.data, p_outcome: outcome });
+  const supabase = createClient();
+  const { error } = await supabase.rpc('complete_task', { p_task: id.data, p_outcome: outcome });
   if (error) go('/tasks', 'error', dbMessage(error));
+  await supabase.rpc('track_usage', { p_event: 'queue_item_done', p_path: null });
   revalidatePath('/tasks');
   revalidatePath('/today');
   go('/tasks', 'ok', 'Task closed.');

@@ -6,6 +6,13 @@ import { can, medicalWritable } from '@/lib/roles';
 import { dateIn } from '@/lib/dates';
 import { LANGUAGES } from '@/lib/constants';
 import { advanceStep, saveMedical, setOptIn, startTreatment, updatePatient } from './actions';
+import Payments from './sections/Payments';
+import Care from './sections/Care';
+import Plans from './sections/Plans';
+import Clinical from './sections/Clinical';
+import Documents from './sections/Documents';
+import Relations from './sections/Relations';
+import { featureOn, loadSwitches } from '@/lib/ai/gateway';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +23,7 @@ export default async function PatientPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { error?: string; ok?: string };
+  searchParams: { error?: string; ok?: string; receipt?: string; explainer?: string; send?: string };
 }) {
   const member = await requireMember();
   const supabase = createClient();
@@ -49,6 +56,12 @@ export default async function PatientPage({
     <>
       {searchParams.error && <p className="error">{searchParams.error}</p>}
       {searchParams.ok && <p>{searchParams.ok}</p>}
+      {searchParams.send?.startsWith('https://wa.me/') && (
+        <p><a href={searchParams.send} target="_blank" rel="noopener noreferrer"><button type="button">Open WhatsApp to send</button></a></p>
+      )}
+      {/^[0-9a-f-]{36}$/.test(searchParams.receipt ?? '') && (
+        <p><Link href={`/receipt/${searchParams.receipt}`} target="_blank">Open the receipt to print or share</Link></p>
+      )}
 
       <div className="card">
         <h2>{patient.full_name}</h2>
@@ -167,6 +180,37 @@ export default async function PatientPage({
           <p className="muted">No published SOPs yet. Publish one under SOPs first.</p>
         )}
       </div>
+
+      {canTreat && (
+        <Plans
+          patientId={patient.id}
+          timeZone={tz}
+          canWrite={canTreat}
+          clinicalWrite={can(member.role, 'clinical:write')}
+          explainerId={/^[0-9a-f-]{36}$/.test(searchParams.explainer ?? '') ? searchParams.explainer! : null}
+          aiOn={featureOn(await loadSwitches(supabase, member.clinicId), 'plan_explainer')}
+        />
+      )}
+
+      {showMedical && (
+        <Clinical patientId={patient.id} timeZone={tz} canWrite={can(member.role, 'clinical:write')} canLab={can(member.role, 'lab:write')} />
+      )}
+
+      {can(member.role, 'scan:view') && <Documents patientId={patient.id} timeZone={tz} patientName={patient.full_name} />}
+
+      <Relations patientId={patient.id} timeZone={tz} showFeedback={showMedical} canLink={can(member.role, 'patient:merge')} />
+
+      <Care
+        patientId={patient.id}
+        timeZone={tz}
+        clinical={can(member.role, 'concern:view')}
+        clinicalWrite={can(member.role, 'clinical:write')}
+        canBook={can(member.role, 'appointment:write')}
+      />
+
+      {can(member.role, 'finance:view') && (
+        <Payments patientId={patient.id} canWrite={can(member.role, 'finance:write')} timeZone={tz} />
+      )}
     </>
   );
 }

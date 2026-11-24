@@ -14,6 +14,8 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Patient documents (#30) are uploaded through server actions; the default limit is 1 MB.
+  experimental: { serverActions: { bodySizeLimit: '11mb' } },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
