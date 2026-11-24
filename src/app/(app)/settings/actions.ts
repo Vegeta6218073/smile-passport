@@ -6,7 +6,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureError } from '@/lib/monitoring';
 import { dbMessage, go } from '@/lib/flash';
-import { clinicSettingsSchema, inviteSchema, templateSchema } from '@/lib/settings';
+import {
+  billingSettingsSchema, clinicSettingsSchema, faqSchema, inviteSchema, priceSchema, scheduleSettingsSchema, templateSchema,
+} from '@/lib/settings';
+import { AI_FEATURES } from '@/lib/ai/types';
 import { ALL_ROLES } from '@/lib/roles';
 
 const first = (e: z.ZodError) => e.issues[0]?.message ?? 'Check the form.';
@@ -21,6 +24,64 @@ export async function saveClinicSettings(formData: FormData) {
   if (error) go('/settings', 'error', dbMessage(error));
   revalidatePath('/settings');
   go('/settings', 'ok', 'Clinic settings saved.');
+}
+
+// Owner-only clinic updates share one path: parse, update through the signed-in client, report back.
+async function updateClinic(formData: FormData, schema: z.ZodTypeAny, ok: string, input?: Record<string, unknown>) {
+  const member = await requirePermission('settings:manage');
+  const parsed = schema.safeParse(input ?? Object.fromEntries(formData));
+  if (!parsed.success) go('/settings', 'error', first(parsed.error));
+  const { error } = await createClient().from('clinics').update(parsed.data).eq('id', member.clinicId);
+  if (error) go('/settings', 'error', dbMessage(error));
+  revalidatePath('/settings');
+  go('/settings', 'ok', ok);
+}
+
+export async function saveBillingSettings(formData: FormData) {
+  await updateClinic(formData, billingSettingsSchema, 'Invoice details saved.');
+}
+
+export async function saveScheduleSettings(formData: FormData) {
+  await updateClinic(formData, scheduleSettingsSchema, 'Hours and follow-up timing saved.',
+    { ...Object.fromEntries(formData), days: formData.getAll('days') });
+}
+
+export async function saveAiSettings(formData: FormData) {
+  const features = Object.fromEntries(AI_FEATURES.map(([k]) => [k, formData.get(`feature_${k}`) === 'on']));
+  await updateClinic(formData, z.object({ ai_enabled: z.boolean(), ai_features: z.record(z.boolean()) }),
+    'AI settings saved.', { ai_enabled: formData.get('ai_enabled') === 'on', ai_features: features });
+}
+
+export async function addFaq(formData: FormData) {
+  const member = await requirePermission('settings:manage');
+  const parsed = faqSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) go('/settings', 'error', first(parsed.error));
+  const { error } = await createClient().from('clinic_faqs').insert({ clinic_id: member.clinicId, ...parsed.data });
+  if (error) go('/settings', 'error', dbMessage(error));
+  revalidatePath('/settings');
+  go('/settings', 'ok', 'Answer added. Reply drafts can now use it.');
+}
+
+export async function addPrice(formData: FormData) {
+  const member = await requirePermission('settings:manage');
+  const parsed = priceSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) go('/settings', 'error', first(parsed.error));
+  const { error } = await createClient().from('clinic_price_ranges').upsert(
+    { clinic_id: member.clinicId, ...parsed.data }, { onConflict: 'clinic_id,treatment' });
+  if (error) go('/settings', 'error', dbMessage(error));
+  revalidatePath('/settings');
+  go('/settings', 'ok', 'Price range saved.');
+}
+
+export async function removeKnowledge(formData: FormData) {
+  await requirePermission('settings:manage');
+  const id = z.string().uuid().safeParse(formData.get('id'));
+  const table = z.enum(['clinic_faqs', 'clinic_price_ranges']).safeParse(formData.get('table'));
+  if (!id.success || !table.success) go('/settings', 'error', 'Invalid request.');
+  const { error } = await createClient().from(table.data).delete().eq('id', id.data);
+  if (error) go('/settings', 'error', dbMessage(error));
+  revalidatePath('/settings');
+  go('/settings', 'ok', 'Removed.');
 }
 
 export async function saveTemplate(formData: FormData) {

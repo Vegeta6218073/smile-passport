@@ -72,6 +72,8 @@ export const enquirySchema = z.object({
   lead_source: z.enum(tuple(LEAD_SOURCES), { message: 'How did they hear about us?' }),
   channel: z.enum(tuple(CHANNELS)).default('whatsapp'),
   referrer_note: optionalText,
+  message: z.string().trim().max(2000).optional().transform((v) => (v ? v : undefined)),
+  preferred_language: z.enum(tuple(LANGUAGES)).default('en'),
 });
 
 export const bookingSchema = z.object({

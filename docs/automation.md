@@ -29,6 +29,16 @@ On a temporary failure (rate limit, provider down) it retries after 5, 10, 15 mi
 
 **Honest limit:** between "re-check opt-in" and the provider call there is a window of a few milliseconds. If a patient sends STOP in exactly that window, one message can still go. The database blocks everything queued after the STOP.
 
+## What each pass does (Phases 2 and 3)
+
+In order: appointment reminders, scan deadline alerts, comfort check-ins (`enqueue_checkins`), lapsed patients (`enqueue_lapsed_recalls`), recall attempts (`run_recall_sequences`), overdue instalment reminders (`enqueue_payment_reminders`), feedback requests (`enqueue_feedback_requests`), expiring unanswered slot offers (`expire_slot_offers`), sending the queue, then push notifications. Every step is safe to repeat. Each new message type needs an approved template in Settings; without one, the patient gets a call task instead.
+
+The webhook now also sorts replies by urgency (`AI_PROVIDER`, default `rules`), recognises feedback ratings (1 to 5) and YES or NO to a slot offer, and stores patient photos when the patient has given photo consent (it downloads them with `WHATSAPP_ACCESS_TOKEN`).
+
+## Push notifications
+
+Run `npx web-push generate-vapid-keys` once and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (a `mailto:` address) for the worker, and the same public key as `NEXT_PUBLIC_VAPID_PUBLIC_KEY` for the web app. Each person turns notifications on per device under Notifications.
+
 ## Providers
 
 `WHATSAPP_PROVIDER` chooses how messages are sent:

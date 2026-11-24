@@ -12,8 +12,9 @@ export async function createSop(formData: FormData) {
   const name = z.string().trim().min(2).max(80).safeParse(formData.get('name'));
   if (!name.success) go('/sops', 'error', 'Give the SOP a name.');
 
+  const phase = z.enum(['treatment', 'retention']).catch('treatment').parse(formData.get('phase'));
   const { error } = await createClient().from('sop_templates').insert({
-    clinic_id: member.clinicId, name: name.data, version: 1,
+    clinic_id: member.clinicId, name: name.data, version: 1, phase,
   });
   if (error) go('/sops', 'error', dbMessage(error));
   revalidatePath('/sops');
@@ -66,4 +67,17 @@ export async function newVersion(formData: FormData) {
   if (error) go('/sops', 'error', dbMessage(error));
   revalidatePath('/sops');
   go('/sops', 'ok', 'New draft version created.');
+}
+
+// Roadmap #33: which retention SOP starts by itself when this treatment completes (debond).
+export async function setRetentionLink(formData: FormData) {
+  await requirePermission('sop:write');
+  const templateId = id.safeParse(formData.get('template_id'));
+  const name = z.string().trim().max(80).safeParse(formData.get('retention_sop_name') ?? '');
+  if (!templateId.success || !name.success) go('/sops', 'error', 'Invalid request.');
+  const { error } = await createClient().from('sop_templates')
+    .update({ retention_sop_name: name.data || null }).eq('id', templateId.data).eq('status', 'draft');
+  if (error) go('/sops', 'error', dbMessage(error));
+  revalidatePath('/sops');
+  go('/sops', 'ok', name.data ? `"${name.data}" will start after this treatment completes.` : 'Retention link removed.');
 }

@@ -10,6 +10,14 @@ export function reminderParams({ patientName, clinicName, startsAt, timeZone }) 
   return [first, clinicName, date, time];
 }
 
+// Parameters for any template kind. Appointment reminders: {{3}} date, {{4}} time.
+// Other kinds: {{1}} first name, {{2}} clinic name, then whatever the queueing function stored.
+export function messageParams({ kind, patientName, clinicName, startsAt, timeZone, extra }) {
+  if (kind === 'appointment_reminder') return reminderParams({ patientName, clinicName, startsAt, timeZone });
+  const first = String(patientName ?? '').trim().split(/\s+/)[0] || 'there';
+  return [first, clinicName, ...(Array.isArray(extra) ? extra.map(String) : [])];
+}
+
 // For logs and dry runs: shows what the patient would read.
 export function renderBody(body, params) {
   return String(body).replace(/\{\{(\d+)\}\}/g, (_, n) => params[Number(n) - 1] ?? '');

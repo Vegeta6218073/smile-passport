@@ -49,6 +49,9 @@ export default async function ScansPage({
             </span>
           ))}
         </p>
+        {can(member.role, 'funnel:view') && (
+          <p className="muted"><a href="/scans/export">Download all scans as a spreadsheet (CSV)</a></p>
+        )}
         {error && <p className="error">Could not load scans.</p>}
         {scans?.length === 0 && <p className="muted">Nothing here.</p>}
         <ul className="list">

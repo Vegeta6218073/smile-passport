@@ -116,8 +116,15 @@ The patient-facing funnel from the Smile Passport journey (28 Jun 2026) is part 
 
 - Public: `/smile` (landing), `/smile/scan` (upload form), `POST /api/smile/submit` (validates photos by file header, stores them privately, rate limits).
 - Staff: `/scans` (review queue with the 24-hour clock, referral partners), `/scans/[id]` (photos, report, next steps), `/report/[id]` (printable report), `/funnel` (the four numbers).
+- Nov 26 (MVP plan): landing page sections, orthodontist profile in Settings, feedback on scans, Day 90 targets and sources on `/funnel`, CSV export at `/scans/export`.
 - Setup: set `SMILE_PASSPORT_CLINIC_ID` in `.env.local` (`npm run seed:dev` prints the dev clinic's id). Set the clinic's `home_cities`, `booking_url` and `review_fee_inr` in the `clinics` table (no settings screen yet).
 
+
+## Phases 2 and 3 (Nov 27 and 28)
+
+Roadmap features #15 to #41: patient import, check-ins and concerns, AI drafts and reply sorting (rule-based, no data leaves S-One), recalls, payments and receipts, emergency visits, dashboard and pilot metrics, plans and estimates, documents, notes and tooth chart, labs, retention SOPs, feedback, sources, duplicates, notifications, waitlist and the weekly summary. Where each one lives and what is still to confirm: `docs/roadmap-status.md`.
+
+New setup: `AI_PROVIDER` and the VAPID keys in `.env.local` (see `.env.example`), and WhatsApp templates for each new message type in Settings.
 
 ## Documentation index
 
@@ -127,4 +134,5 @@ The patient-facing funnel from the Smile Passport journey (28 Jun 2026) is part 
 | `docs/CHANGELOG.md` | What was added, by date, with migration and test file names |
 | `docs/automation.md` | Worker, WhatsApp providers, webhook, invitations, environment variables, go-live checklist |
 | `docs/smile-passport.md` | How the Smile Passport journey maps to the code |
+| `docs/roadmap-status.md` | Where each roadmap feature (#15 to #41) lives, and the decisions still open |
 | `docs/REVIEW.md` | Phase 0 review findings and what is still open |

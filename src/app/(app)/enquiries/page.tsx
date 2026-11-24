@@ -1,7 +1,8 @@
 import { requireMember } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { CHANNELS, LEAD_SOURCES } from '@/lib/constants';
-import { advanceEnquiry, createEnquiry } from './actions';
+import { CHANNELS, LANGUAGES, LEAD_SOURCES } from '@/lib/constants';
+import { featureOn } from '@/lib/ai/gateway';
+import { advanceEnquiry, createEnquiry, draftReply, reviewDraft } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,24 +25,58 @@ function minutesBetween(a: string, b: string) {
 export default async function EnquiriesPage({
   searchParams,
 }: {
-  searchParams: { error?: string; ok?: string };
+  searchParams: { error?: string; ok?: string; draft?: string; send?: string };
 }) {
   const member = await requireMember();
   const supabase = createClient();
-  const [{ data: enquiries, error }, { data: clinic }] = await Promise.all([
+  const draftId = /^[0-9a-f-]{36}$/.test(searchParams.draft ?? '') ? searchParams.draft! : null;
+  const [{ data: enquiries, error }, { data: clinic }, { data: draft }] = await Promise.all([
     supabase
       .from('enquiries')
-      .select('id, name, phone, lead_source, channel, status, received_at, first_replied_at, lost_reason')
+      .select('id, name, phone, lead_source, channel, status, received_at, first_replied_at, lost_reason, message')
       .order('received_at', { ascending: false })
       .limit(50),
-    supabase.from('clinics').select('reply_sla_minutes').eq('id', member.clinicId).single(),
+    supabase.from('clinics').select('reply_sla_minutes, ai_enabled, ai_features').eq('id', member.clinicId).single(),
+    draftId
+      ? supabase.from('ai_actions').select('id, draft, outcome, grounded, input_ref, subject_id').eq('id', draftId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   const sla = clinic?.reply_sla_minutes ?? 120;
+  const drafting = featureOn(clinic, 'enquiry_reply');
+  // Only ever link to WhatsApp, whatever arrives in the URL.
+  const sendLink = searchParams.send?.startsWith('https://wa.me/') ? searchParams.send : null;
+  const draftFor = enquiries?.find((e) => e.id === draft?.subject_id);
 
   return (
     <>
       {searchParams.error && <p className="error">{searchParams.error}</p>}
       {searchParams.ok && <p>{searchParams.ok}</p>}
+      {sendLink && (
+        <div className="card">
+          <a href={sendLink} target="_blank" rel="noopener noreferrer"><button type="button">Open WhatsApp to send</button></a>
+        </div>
+      )}
+
+      {draft && draft.outcome === 'pending' && (
+        <div className="card" id="draft">
+          <h2>Draft reply{draftFor ? ` to ${draftFor.name}` : ''}</h2>
+          {draftFor?.message && <p className="muted">They asked: “{draftFor.message}”</p>}
+          {draft.grounded === false && (
+            <p className="error">No approved answer matched this question. Check and complete the draft before sending.</p>
+          )}
+          <p className="muted">
+            Based on: {((draft.input_ref as { sources?: string[] })?.sources ?? []).join(' · ') || 'nothing specific'}.
+            A draft. Nothing is sent until you approve it.
+          </p>
+          <form action={reviewDraft}>
+            <input type="hidden" name="action_id" value={draft.id} />
+            <label htmlFor="final_text">Message</label>
+            <textarea id="final_text" name="final_text" rows={6} defaultValue={draft.draft ?? ''} maxLength={4000} />
+            <button type="submit" name="decision" value="approve">Approve</button>{' '}
+            <button type="submit" name="decision" value="discard" className="link">Discard</button>
+          </form>
+        </div>
+      )}
 
       <div className="card">
         <h2>Capture an enquiry</h2>
@@ -61,6 +96,12 @@ export default async function EnquiriesPage({
           </select>
           <label htmlFor="referrer_note">Referred by (if any)</label>
           <input id="referrer_note" name="referrer_note" />
+          <label htmlFor="message">What did they ask?</label>
+          <textarea id="message" name="message" rows={3} maxLength={2000} />
+          <label htmlFor="preferred_language">Their language</label>
+          <select id="preferred_language" name="preferred_language" defaultValue="en">
+            {LANGUAGES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
           <button type="submit">Save enquiry</button>
         </form>
       </div>
@@ -81,11 +122,18 @@ export default async function EnquiriesPage({
                 <span className="muted">
                   {e.phone} · {sourceLabel[e.lead_source] ?? e.lead_source} · {e.status.replace(/_/g, ' ')}
                 </span>
+                {e.message && <div>“{e.message}”</div>}
                 <div className={late ? 'error' : 'muted'}>
                   {e.first_replied_at ? `Replied in ${waited} min` : `Waiting ${waited} min`}
                   {late ? ` (over the ${sla} min target)` : ''}
                   {e.lost_reason ? ` · lost: ${e.lost_reason}` : ''}
                 </div>
+                {drafting && !e.first_replied_at && e.message && e.status !== 'lost' && (
+                  <form action={draftReply} style={{ display: 'inline' }}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <button type="submit" className="link">Draft a reply</button>{' '}
+                  </form>
+                )}
                 {next && (
                   <form action={advanceEnquiry} style={{ display: 'inline' }}>
                     <input type="hidden" name="id" value={e.id} />

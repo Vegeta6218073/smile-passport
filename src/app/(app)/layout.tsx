@@ -4,6 +4,7 @@ import { requireMember } from '@/lib/auth';
 import { navFor } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/server';
 import IdleSignOut from '@/components/IdleSignOut';
+import UsageBeacon from '@/components/UsageBeacon';
 
 async function signOut() {
   'use server';
@@ -15,20 +16,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Pages and actions call requireMember() themselves and enforce 2FA; this call only needs
   // identity, so the enrolment gate is skipped here and /security stays reachable.
   const member = await requireMember({ allowUnenrolled: true });
-  const { data: aal } = await createClient().auth.mfa.getAuthenticatorAssuranceLevel();
+  const supabase = createClient();
+  const [{ data: aal }, { count: unread }] = await Promise.all([
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
+  ]);
   const needsEnrol = process.env.REQUIRE_2FA === 'true' && aal?.nextLevel === 'aal1';
 
   return (
     <div className="shell">
       <IdleSignOut />
+      <UsageBeacon />
       <div className="topbar">
         <div>
           <strong>{member.clinicName}</strong>
           <div className="muted">{member.email} · {member.role.replace('_', ' ')}</div>
         </div>
-        <form action={signOut}>
-          <button className="link" type="submit">Sign out</button>
-        </form>
+        <div>
+          <Link href="/notifications">{unread ? <strong>Notifications ({unread})</strong> : 'Notifications'}</Link>
+          <form action={signOut} style={{ display: 'inline' }}>
+            <button className="link" type="submit">Sign out</button>
+          </form>
+        </div>
       </div>
       <nav className="nav">
         {navFor(member.role).map((item) => (
